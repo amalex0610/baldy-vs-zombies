@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>光頭大戰殭屍：強制理髮 - 實況吐槽大字版</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@500;700;900&display=swap');
+    
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #020617;
+      color: #fff;
+      overflow: hidden;
+    }
+    .font-game {
+      font-family: 'Fredoka One', 'Noto Sans TC', cursive, sans-serif;
+    }
+    .modal-active {
+      display: flex !important;
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    /* Stream Chat Danmaku - 放大字體 */
+    .danmaku-item {
+      position: absolute;
+      white-space: nowrap;
+      font-weight: 900;
+      pointer-events: none;
+      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+      animation: danmakuMove 4.5s linear forwards;
+    }
+    @keyframes danmakuMove {
+      from { transform: translateX(100vw); }
+      to { transform: translateX(-100%); }
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center bg-slate-950 p-1 sm:p-3 select-none">
+
+  <!-- Stream Danmaku Container -->
+  <div id="danmaku-container" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+  <div class="relative w-full max-w-4xl h-full max-h-[860px] flex flex-col bg-gray-900 border-4 border-amber-400 rounded-3xl shadow-[0_0_60px_rgba(251,191,36,0.35)] overflow-hidden">
+    
+    <!-- Top HUD Banner (加高、放大字體) -->
+    <header class="h-20 bg-slate-950/95 border-b border-amber-500/40 px-3 sm:px-6 py-2 flex items-center justify-between z-10 font-game">
+      <!-- Reputation (HP) -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="text-sm sm:text-base text-amber-300 font-black uppercase tracking-wider flex items-center gap-1">
+          <span>💈 名譽</span>
+        </div>
+        <div class="w-24 sm:w-40 h-5 bg-gray-800 rounded-full overflow-hidden border-2 border-amber-400/60 p-0.5 shadow-inner">
+          <div id="hp-bar" class="h-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-100" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- Center Level & Beat Progress -->
+      <div class="flex flex-col items-center">
+        <div id="stage-badge" class="text-xs sm:text-sm text-amber-300 font-extrabold tracking-wide flex items-center gap-1.5">
+          <span id="stage-name-display">第 1 關：老街理髮廳</span>
+          <span id="invincible-indicator" class="hidden px-2 py-0.5 text-[10px] bg-yellow-400 text-slate-950 font-black rounded-full animate-pulse shadow">🛡 拋光霸體</span>
+        </div>
+        <div class="w-28 sm:w-48 h-2 bg-slate-800 rounded-full overflow-hidden mt-1 border border-slate-700">
+          <div id="stage-progress-bar" class="h-full bg-amber-400 w-0 transition-all duration-150"></div>
+        </div>
+        <div class="flex gap-1.5 mt-1.5">
+          <span id="beat-dot-1" class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+          <span id="beat-dot-2" class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+          <span id="beat-dot-3" class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+          <span id="beat-dot-4" class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+        </div>
+      </div>
+
+      <!-- Quick Avatar Button & Combo/Score -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        <button id="btn-quick-avatar" title="自訂理髮師光頭頭像" class="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border-2 border-amber-400/60 text-amber-300 text-xs px-3 py-1.5 rounded-xl transition active:scale-95 shadow">
+          <span class="w-7 h-7 rounded-full overflow-hidden border border-amber-400 inline-block bg-slate-900 shrink-0">
+            <img id="hud-avatar-thumb" src="player_head.png" onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23fbbf24\'/></svg>'" class="w-full h-full object-cover">
+          </span>
+          <span class="font-extrabold text-sm">換頭像</span>
+        </button>
+
+        <div class="text-center">
+          <div class="text-[10px] sm:text-xs text-amber-200/70 font-bold">COMBO</div>
+          <div id="combo-display" class="text-xl sm:text-3xl text-amber-400 font-black leading-none">0</div>
+        </div>
+
+        <div class="text-right">
+          <div class="text-[10px] sm:text-xs text-slate-400 font-bold">SCORE</div>
+          <div id="score-display" class="text-base sm:text-2xl text-white font-extrabold leading-none">000000</div>
+        </div>
+      </div>
+    </header>
+
+    <div id="canvas-container" class="relative flex-1 w-full h-full overflow-hidden bg-slate-900 cursor-crosshair">
+      <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+      <!-- Center Metronome Beat Visual Circle -->
+      <div id="beat-pulse" class="absolute pointer-events-none top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-36 h-36 rounded-full border-2 border-amber-300/30 transition-transform duration-75"></div>
+      
+      <!-- In-game Rating Text (大幅放大字體) -->
+      <div id="rating-text" class="absolute pointer-events-none top-[34%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-3xl sm:text-6xl font-black font-game opacity-0 transform -translate-y-4 transition-all duration-150 z-20 whitespace-nowrap filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"></div>
+
+      <!-- Live Streamer Toast Box (TTS Display - 放大字體) -->
+      <div id="stream-toast" class="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-950/95 border-2 border-pink-500 text-pink-300 px-5 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(236,72,153,0.7)] font-black text-sm sm:text-base z-30 opacity-0 pointer-events-none transition-all duration-200 flex items-center gap-2 max-w-[90%]">
+        <span class="text-xl sm:text-2xl">📢</span>
+        <span id="stream-toast-text">實況酸民：準備看翻車！</span>
+      </div>
+
+      <!-- START OVERLAY SCREEN -->
+      <div id="start-screen" class="absolute inset-0 z-30 bg-slate-950/95 flex flex-col items-center justify-between p-4 sm:p-6 text-center">
+        <div class="mt-1 flex flex-col items-center">
+          <div class="text-5xl sm:text-7xl mb-1 filter drop-shadow-[0_0_30px_#f59e0b]">👨‍🦲⚡🧟‍♂️</div>
+          <h1 class="text-3xl sm:text-5xl font-game font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-orange-400 mb-1">
+            光頭大戰殭屍：強制理髮
+          </h1>
+          <p class="text-amber-200/90 text-sm sm:text-base font-bold">
+            🎵 嚴格 4/4 拍律動 • 實況效果拉滿，全網都在看！
+          </p>
+        </div>
+
+        <!-- Stage Selection & Current Avatar Card -->
+        <div class="w-full max-w-lg bg-slate-900/90 border-2 border-amber-400/50 rounded-2xl p-3 sm:p-5 my-2 flex flex-col gap-3 shadow-2xl">
+          <div class="grid grid-cols-3 gap-2.5 text-xs">
+            <button data-stage="1" class="stage-btn py-2.5 px-1.5 rounded-xl border-2 border-amber-400/80 bg-amber-500/30 text-amber-200 font-extrabold flex flex-col items-center transition active:scale-95 shadow">
+              <span class="text-xl sm:text-2xl mb-0.5">💈</span>
+              <span class="font-black text-sm sm:text-base">第 1 關</span>
+              <span class="text-xs text-amber-300 font-bold">老街理髮廳</span>
+              <span class="text-[10px] sm:text-xs text-amber-200/80 mt-1 bg-amber-950/60 px-1.5 py-0.5 rounded-full border border-amber-500/30">105 BPM 暖手</span>
+            </button>
+
+            <button data-stage="2" class="stage-btn py-2.5 px-1.5 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 font-bold flex flex-col items-center transition active:scale-95">
+              <span class="text-xl sm:text-2xl mb-0.5">🪩</span>
+              <span class="font-black text-sm sm:text-base">第 2 關</span>
+              <span class="text-xs text-purple-300 font-bold">霓虹沙龍</span>
+              <span class="text-[10px] sm:text-xs text-purple-200/80 mt-1 bg-purple-950/60 px-1.5 py-0.5 rounded-full border border-purple-500/30">128 BPM 連剪</span>
+            </button>
+
+            <button data-stage="3" class="stage-btn py-2.5 px-1.5 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 font-bold flex flex-col items-center transition active:scale-95">
+              <span class="text-xl sm:text-2xl mb-0.5">🎸</span>
+              <span class="font-black text-sm sm:text-base">第 3 關</span>
+              <span class="text-xs text-red-300 font-bold">重金屬地獄</span>
+              <span class="text-[10px] sm:text-xs text-red-200/80 mt-1 bg-red-950/60 px-1.5 py-0.5 rounded-full border border-red-500/30">140 BPM 決戰</span>
+            </button>
+          </div>
+
+          <div id="stage-preview-card" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-left text-xs sm:text-sm text-slate-300 flex items-center justify-between">
+            <div>
+              <div class="font-black text-amber-300 text-sm sm:text-base" id="preview-stage-title">第 1 關：老街理髮廳 (溫和入門)</div>
+              <div class="text-xs text-slate-400 mt-0.5" id="preview-stage-desc">85% 普通長髮殭屍、15% 補血同伴。練習左右拍點！</div>
+            </div>
+            <div class="text-right whitespace-nowrap pl-2">
+              <div class="text-xs text-slate-400 font-bold">通關目標</div>
+              <div class="text-amber-400 font-black text-base sm:text-lg" id="preview-stage-target">剃滿 20 人</div>
+            </div>
+          </div>
+
+          <!-- 主角展示框：大幅放大頭像至直徑 80px (w-20 h-20) -->
+          <div class="bg-gradient-to-r from-amber-950/50 via-slate-900 to-amber-950/40 border-2 border-amber-400/60 rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-4 text-xs shadow-inner">
+            <div class="flex items-center gap-3.5">
+              <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-amber-400 bg-slate-950 shrink-0 shadow-[0_0_20px_rgba(251,191,36,0.4)]">
+                <img id="avatar-status-img" src="player_head.png" onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23fbbf24\'/><path d=\'M30 65 Q50 85 70 65\' stroke=\'%23000\' stroke-width=\'5\' fill=\'none\'/><circle cx=\'35\' cy=\'45\' r=\'6\'/><circle cx=\'65\' cy=\'45\' r=\'6\'/></svg>'" alt="理髮師頭像" class="w-full h-full object-cover">
+              </div>
+              <div class="text-left">
+                <div class="font-black text-amber-300 text-sm sm:text-base flex items-center gap-1.5">
+                  <span>理髮大師頭像</span>
+                  <span id="avatar-source-tag" class="text-[10px] bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/40 font-bold">預設 player_head.png</span>
+                </div>
+                <div class="text-xs text-slate-300 mt-1">支援任意照片免去背！自動圓弧對齊與邊緣羽化</div>
+              </div>
+            </div>
+
+            <button id="btn-open-crop-modal" class="px-3.5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-lg transition active:scale-95 shrink-0">
+              <span>📷 自訂頭像</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Buttons Area (放大按鈕文字) -->
+        <div class="flex flex-col sm:flex-row gap-3 w-full max-w-sm mb-2">
+          <button id="btn-tutorial-open" class="flex-1 py-3.5 bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-amber-300 font-extrabold text-sm sm:text-base rounded-2xl shadow transition active:scale-95">
+            📖 新手理髮手冊
+          </button>
+          <button id="btn-start" class="flex-1 py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-lg sm:text-xl rounded-2xl shadow-[0_0_25px_rgba(251,191,36,0.5)] transform active:scale-95 transition">
+            💈 開播剪髮！
+          </button>
+        </div>
+      </div>
+
+      <!-- CROP MODAL -->
+      <div id="crop-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-slate-900 border-2 border-amber-400 rounded-3xl w-full max-w-md p-4 flex flex-col items-center gap-3 shadow-[0_0_40px_rgba(251,191,36,0.3)]">
+          <div class="w-full flex items-center justify-between border-b border-slate-800 pb-2">
+            <h3 class="font-game text-base sm:text-lg font-black text-amber-300 flex items-center gap-1.5">
+              <span>📷 自訂理髮師光頭 (免去背)</span>
+            </h3>
+            <button id="btn-close-crop" class="text-slate-400 hover:text-white text-xl font-bold px-2 py-1">✕</button>
+          </div>
+
+          <div class="relative w-64 h-64 bg-slate-950 rounded-2xl overflow-hidden border border-amber-500/50 shadow-inner flex items-center justify-center">
+            <canvas id="cropCanvas" width="256" height="256" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+            
+            <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+              <div class="w-48 h-56 border-2 border-dashed border-amber-400/90 rounded-[50%_50%_48%_48%/60%_60%_40%_40%] shadow-[0_0_25px_rgba(251,191,36,0.35)] flex items-center justify-center">
+                <span class="text-xs font-bold text-amber-300/80 bg-slate-950/70 px-2 py-0.5 rounded-full">頭頂與臉部對齊此框</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full flex flex-col gap-2 text-xs sm:text-sm">
+            <div class="flex items-center justify-between text-slate-300">
+              <span class="font-bold">🔍 縮放大小</span>
+              <input id="crop-zoom" type="range" min="0.4" max="2.5" step="0.05" value="1.0" class="w-36 accent-amber-400">
+              <span id="zoom-val-text" class="text-amber-300 font-bold w-12 text-right">100%</span>
+            </div>
+            <p class="text-xs text-slate-400 text-center">💡 滑鼠拖曳或手指滑動可移動位置，滾輪或滑桿可調整縮放</p>
+          </div>
+
+          <div class="w-full flex flex-col gap-2 pt-1 border-t border-slate-800">
+            <div class="flex gap-2">
+              <label for="crop-file-input" class="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 border border-slate-600 rounded-xl font-bold text-xs sm:text-sm text-center cursor-pointer transition">
+                📂 選擇其他相片
+              </label>
+              <input id="crop-file-input" type="file" accept="image/*" class="hidden">
+              <button id="btn-reset-default-avatar" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 rounded-xl font-bold text-xs sm:text-sm transition">
+                還原 player_head.png
+              </button>
+            </div>
+
+            <button id="btn-apply-avatar" class="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-200 text-slate-950 font-black text-sm sm:text-base rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.5)] transition active:scale-95">
+              ✅ 確認套用並存檔
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TUTORIAL SCREEN OVERLAY -->
+      <div id="tutorial-screen" class="hidden absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 text-center">
+        <div class="w-full max-w-2xl">
+          <h2 class="text-2xl sm:text-4xl font-game font-black text-amber-300 mb-1">📖 髮廊快速理髮手冊</h2>
+          <p class="text-sm sm:text-base text-slate-300 mb-4">掌握各類客人的理髮要訣，光頭同化就是拯救世界！</p>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+            <div class="bg-slate-900 border border-blue-500/40 p-3.5 rounded-2xl flex items-center gap-3">
+              <div class="text-4xl bg-blue-950/80 p-2 rounded-xl">💇</div>
+              <div>
+                <div class="text-base font-black text-blue-300">一般長髮/爆炸頭殭屍</div>
+                <div class="text-xs sm:text-sm text-slate-300 mt-0.5">進入金色光圈瞬間單擊 <kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400 font-bold">A</kbd> 或 <kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-400 font-bold">D</kbd> 乾淨剃平！</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-pink-500/40 p-3.5 rounded-2xl flex items-center gap-3">
+              <div class="text-4xl bg-pink-950/80 p-2 rounded-xl">🎸</div>
+              <div>
+                <div class="text-base font-black text-pink-300">龐克巨漢 (短長按)</div>
+                <div class="text-xs sm:text-sm text-slate-300 mt-0.5"><span class="text-pink-400 font-bold">按住約 0.25 拍</span> 聽到電推滋滋聲即刻剃平！時間極短，不用苦撐！</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 border border-purple-500/40 p-3.5 rounded-2xl flex items-center gap-3">
+              <div class="text-4xl bg-purple-950/80 p-2 rounded-xl">🦱</div>
+              <div>
+                <div class="text-base font-black text-purple-300">戴假髮偽裝殭屍</div>
+                <div class="text-xs sm:text-sm text-slate-300 mt-0.5"><span class="text-purple-400 font-bold">連續雙擊 (Double Tap)</span>！第 1 刀挑飛假髮，第 2 刀徹底剃光！</div>
+              </div>
+            </div>
+
+            <div class="bg-emerald-950/40 border border-emerald-500/50 p-3.5 rounded-2xl flex items-center gap-3">
+              <div class="text-4xl bg-emerald-950 p-2 rounded-xl">💚</div>
+              <div>
+                <div class="text-base font-black text-emerald-300">臥底光頭同伴 (放行救命)</div>
+                <div class="text-xs sm:text-sm text-slate-300 mt-0.5"><span class="text-emerald-400 font-bold">千萬不要剃他！</span>讓他平安走過會<span class="text-emerald-400 font-bold">立即恢復 +20 名譽值</span>！</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-tutorial-close" class="mt-4 px-10 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base sm:text-lg rounded-2xl shadow-lg transition active:scale-95">
+          👌 我全明白了，回選單！
+        </button>
+      </div>
+
+      <!-- VICTORY / STAGE CLEAR SCREEN -->
+      <div id="stage-clear-screen" class="hidden absolute inset-0 z-30 bg-emerald-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+        <div class="text-6xl sm:text-7xl mb-2" id="clear-icon">🎉💈🌟</div>
+        <h2 class="text-3xl sm:text-5xl font-black font-game text-emerald-400 mb-1" id="clear-title">理髮大成功！關卡突破！</h2>
+        <p id="clear-message" class="text-slate-300 text-sm sm:text-base mb-4">這座城市的殭屍已被你剃得油光發亮！</p>
+
+        <div class="bg-slate-900/90 border-2 border-emerald-400/50 p-5 rounded-2xl w-84 mb-6 shadow-2xl text-center">
+          <div class="text-3xl mb-2" id="clear-stars">⭐⭐⭐</div>
+          <div class="text-xs sm:text-sm text-slate-400 font-bold">關卡結算得分</div>
+          <div id="clear-score" class="text-4xl font-extrabold text-amber-300 mb-2 font-game">000000</div>
+          <div class="text-xs sm:text-sm text-slate-400 font-bold">同化光頭殭屍數</div>
+          <div id="clear-shaved" class="text-lg font-bold text-white mb-2">0 名</div>
+          <div id="next-stage-hint" class="text-xs sm:text-sm text-emerald-300/90 bg-emerald-950/70 p-2.5 rounded-xl border border-emerald-500/30">
+            下一關提示：速度將提升至 128 BPM，戴假髮的殭屍大量出沒！
+          </div>
+        </div>
+
+        <div class="flex gap-4">
+          <button id="btn-next-stage" class="px-8 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base sm:text-lg rounded-2xl shadow-[0_0_20px_rgba(251,191,36,0.6)] transform active:scale-95 transition">
+            ⏩ 前往下一關
+          </button>
+          <button id="btn-clear-menu" class="px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-base rounded-2xl transition">
+            🏠 主選單
+          </button>
+        </div>
+      </div>
+
+      <!-- GAME OVER SCREEN -->
+      <div id="game-over-screen" class="hidden absolute inset-0 z-30 bg-red-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+        <div class="text-6xl sm:text-7xl mb-2">😱🩸🪒</div>
+        <h2 class="text-3xl sm:text-5xl font-black font-game text-red-400 mb-1">髮廊名譽掃地！實況翻車！</h2>
+        <p class="text-slate-300 text-sm sm:text-base mb-4">主播手忙腳亂，已被全網觀眾笑爛！</p>
+
+        <div class="bg-slate-900/90 border-2 border-amber-500/40 p-5 rounded-2xl w-72 mb-6 shadow-2xl">
+          <div class="text-xs sm:text-sm text-slate-400 font-bold">最終得分</div>
+          <div id="final-score" class="text-4xl font-extrabold text-amber-300 mb-2 font-game">0</div>
+          <div class="text-xs sm:text-sm text-slate-400 font-bold">已同化光頭殭屍</div>
+          <div id="final-shaved" class="text-xl font-bold text-white">0 名</div>
+        </div>
+
+        <div class="flex gap-4">
+          <button id="btn-restart" class="px-8 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base sm:text-lg rounded-2xl shadow transition active:scale-95">
+            🔄 不服重來！
+          </button>
+          <button id="btn-over-menu" class="px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-base rounded-2xl transition">
+            🏠 主選單
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Touch Buttons -->
+    <div class="h-20 sm:h-24 bg-slate-950/95 border-t border-slate-800 px-3 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4 z-10">
+      <button id="touch-left" class="flex-1 h-full bg-gradient-to-b from-blue-700 to-indigo-900 active:from-blue-500 active:to-indigo-700 border-2 border-blue-400/60 rounded-2xl flex flex-col items-center justify-center shadow-lg transition active:scale-95">
+        <span class="text-2xl sm:text-3xl leading-none">🪒 ⬅️</span>
+        <span class="text-xs sm:text-sm font-bold text-blue-200 mt-1">左側剃度 (A / ←)</span>
+      </button>
+
+      <button id="touch-ultra" class="px-3 sm:px-6 h-full bg-slate-800 border-2 border-yellow-400/40 text-yellow-300/50 rounded-2xl flex flex-col items-center justify-center font-bold text-xs sm:text-sm transition opacity-50 cursor-not-allowed">
+        <span class="text-2xl sm:text-3xl leading-none">✨🧴</span>
+        <span class="text-xs sm:text-sm font-black mt-1">拋光大絕 (SPACE)</span>
+      </button>
+
+      <button id="touch-right" class="flex-1 h-full bg-gradient-to-b from-amber-600 to-orange-800 active:from-amber-500 active:to-orange-700 border-2 border-amber-400/60 rounded-2xl flex flex-col items-center justify-center shadow-lg transition active:scale-95">
+        <span class="text-2xl sm:text-3xl leading-none">➡️ 🪒</span>
+        <span class="text-xs sm:text-sm font-bold text-amber-200 mt-1">右側剃度 (D / →)</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Streamer TTS Voice & Danmaku System (彈幕字體放大) -->
+  <script>
+    class StreamerRoastSystem {
+      constructor() {
+        this.synth = window.speechSynthesis || null;
+        this.container = document.getElementById('danmaku-container');
+        this.toastEl = document.getElementById('stream-toast');
+        this.toastTextEl = document.getElementById('stream-toast-text');
+        this.toastTimer = null;
+
+        this.winRoasts = [
+          "這也能過？我看殭屍是被你頭頂的光亮瞎自己跌倒的吧！",
+          "運氣型實況主，剛才那個單擊明明按歪了，系統作弊啦！",
+          "剃完這幾個人，手在抖了齁？要不要幫你叫救護車？",
+          "就這？我阿嬤用腳趾頭推剪都比你順好不好！",
+          "打得跟中風一樣還敢拿評價？退訂了退訂了！",
+          "別吹了，這關要是沒同伴補血，你早就在地上爬了！"
+        ];
+
+        this.finalWinRoasts = [
+          "全破了？假的吧！這主播肯定開了外掛！退錢退錢！",
+          "竟然真被你硬混過第3關！75個殭屍全滅，但我的眼睛也快瞎了！",
+          "恭喜光頭大師登頂，雖然打得奇醜無比，但勉強算你過關吧！"
+        ];
+
+        this.loseRoasts = [
+          "笑死！光頭大師當場翻車，連個推剪都拿不穩！",
+          "菜就多練！不會剪就去旁邊拿掃把掃地好不好！",
+          "哈哈哈哈哈！這波操作簡直是理髮界的災難，殭屍都看傻了！",
+          "名譽掃地？笑死，你什麼時候有名譽這種東西了？",
+          "退訂了！這台主播只會給殭屍抓頭皮，完全沒有技術！",
+          "這技術還敢開台？殭屍都嫌你的理髮店服務太差！"
+        ];
+
+        this.scalpRoasts = [
+          "痛死了！殺人理髮師出沒！",
+          "盲人剪髮喔？同伴你也剃！",
+          "隊友頭皮都被你掀翻了啦！"
+        ];
+
+        this.danmakuPool = [
+          "77777777", "笑死 翻車了", "阿嬤都比你強", "台主中風喔？",
+          "？？？？？？", "名譽掃地草", "手在抖了啦", "退訂退訂",
+          "光頭反光太刺眼", "這操作我給0分", "殭屍：謝謝理髮師", "滿血救命草"
+        ];
+      }
+
+      speak(text) {
+        if (!this.synth) return;
+        this.synth.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW';
+        utterance.rate = 1.15;
+        utterance.pitch = 1.1;
+
+        const voices = this.synth.getVoices();
+        const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('cmn'));
+        if (zhVoice) utterance.voice = zhVoice;
+
+        this.synth.speak(utterance);
+        this.showToast(text);
+      }
+
+      showToast(text) {
+        this.toastTextEl.innerText = text;
+        this.toastEl.style.opacity = '1';
+        this.toastEl.style.transform = 'translate(-50%, 0) scale(1)';
+
+        if (this.toastTimer) clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+          this.toastEl.style.opacity = '0';
+          this.toastEl.style.transform = 'translate(-50%, -10px) scale(0.95)';
+        }, 3600);
+      }
+
+      triggerDanmaku(text, color = '#fef08a') {
+        const item = document.createElement('div');
+        item.className = 'danmaku-item';
+        item.innerText = text;
+        item.style.top = (Math.random() * 65 + 8) + '%';
+        // 彈幕字體放大至 24px ~ 38px
+        item.style.fontSize = (Math.random() * 14 + 24) + 'px';
+        item.style.color = color;
+        this.container.appendChild(item);
+
+        setTimeout(() => {
+          if (item.parentNode) item.parentNode.removeChild(item);
+        }, 4600);
+      }
+
+      burstDanmaku(count = 8) {
+        for (let i = 0; i < count; i++) {
+          setTimeout(() => {
+            const randomText = this.danmakuPool[Math.floor(Math.random() * this.danmakuPool.length)];
+            const colors = ['#f43f5e', '#fbbf24', '#38bdf8', '#4ade80', '#ffffff'];
+            this.triggerDanmaku(randomText, colors[Math.floor(Math.random() * colors.length)]);
+          }, i * 140);
+        }
+      }
+
+      roastWin(isFinalStage = false) {
+        const list = isFinalStage ? this.finalWinRoasts : this.winRoasts;
+        const msg = list[Math.floor(Math.random() * list.length)];
+        this.speak(msg);
+        this.burstDanmaku(12);
+      }
+
+      roastLose() {
+        const msg = this.loseRoasts[Math.floor(Math.random() * this.loseRoasts.length)];
+        this.speak(msg);
+        this.burstDanmaku(15);
+      }
+
+      roastScalp() {
+        const msg = this.scalpRoasts[Math.floor(Math.random() * this.scalpRoasts.length)];
+        this.speak(msg);
+        this.triggerDanmaku("⚠️ 刮破同伴頭皮草！", "#ef4444");
+      }
+    }
+
+    const streamer = new StreamerRoastSystem();
+  </script>
+
+  <!-- Web Audio Synthesizer -->
+  <script>
+    class ProceduralBarberAudio {
+      constructor() {
+        this.ctx = null;
+        this.tempo = 120;
+        this.step = 0;
+        this.timer = null;
+        this.nextNoteTime = 0;
+        this.isPlaying = false;
+        this.masterGain = null;
+        this.loopCallback = null;
+        this.musicType = 'TITLE';
+
+        this.holdOscLeft = null;
+        this.holdGainLeft = null;
+        this.holdOscRight = null;
+        this.holdGainRight = null;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+      }
+
+      setTempo(newTempo) {
+        this.tempo = newTempo;
+      }
+
+      playMusic(type, onBeat = null) {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        this.stopMusic();
+        this.musicType = type;
+        this.isPlaying = true;
+        this.step = 0;
+        this.nextNoteTime = this.ctx.currentTime + 0.05;
+        this.loopCallback = onBeat;
+        this.scheduler();
+      }
+
+      stopMusic() {
+        this.isPlaying = false;
+        if (this.timer) clearTimeout(this.timer);
+        this.stopHoldBuzz('left');
+        this.stopHoldBuzz('right');
+      }
+
+      scheduler() {
+        if (!this.isPlaying) return;
+        const secondsPer16th = (60.0 / this.tempo) / 4;
+        const lookahead = 0.04;
+
+        while (this.nextNoteTime < this.ctx.currentTime + lookahead) {
+          this.playMusicStep(this.musicType, this.step, this.nextNoteTime);
+          if (this.loopCallback && this.step % 4 === 0) {
+            const beatNumber = Math.floor(this.step / 4);
+            this.loopCallback(beatNumber, this.nextNoteTime);
+          }
+          this.nextNoteTime += secondsPer16th;
+          this.step = (this.step + 1) % 16;
+        }
+
+        this.timer = setTimeout(() => this.scheduler(), 22);
+      }
+
+      playMusicStep(type, step, time) {
+        if (type === 'TITLE') {
+          if (step === 0 || step === 8) this.playKick(time, 0.45);
+          if (step === 4 || step === 12) this.playSnare(time, 0.2);
+          if (step % 2 === 0) this.playHiHat(time, 0.04);
+          const titleChords = [220, 261.63, 329.63, 293.66];
+          if (step % 4 === 0) {
+            this.playSynthNote(titleChords[(step / 4) % titleChords.length], time, 0.2, 'sine', 0.15);
+          }
+        } 
+        else if (type === 'STAGE1') {
+          if (step === 0 || step === 4 || step === 8 || step === 12 || step === 14) this.playKick(time, 0.85);
+          if (step === 4 || step === 12) this.playSnare(time, 0.4);
+          this.playHiHat(time, step % 2 === 0 ? 0.08 : 0.03);
+          const funkBass = [110, 110, 130.81, 146.83, 164.81, 146.83, 130.81, 123.47];
+          if (step % 2 === 0) {
+            this.playSynthNote(funkBass[(step / 2) % funkBass.length], time, 0.12, 'sawtooth', 0.28, 480);
+          }
+        } 
+        else if (type === 'STAGE2') {
+          if (step % 4 === 0) this.playKick(time, 0.95);
+          if (step === 4 || step === 12) this.playSnare(time, 0.5);
+          if (step % 2 === 1) this.playHiHat(time, 0.09, true);
+          const discoArp = [146.83, 220, 293.66, 369.99, 440, 369.99, 293.66, 220];
+          this.playSynthNote(discoArp[step % discoArp.length], time, 0.08, 'square', 0.18, 900);
+        } 
+        else if (type === 'STAGE3') {
+          if (step % 2 === 0 || step === 7 || step === 15) this.playKick(time, 1.0);
+          if (step === 4 || step === 12) this.playSnare(time, 0.6);
+          this.playHiHat(time, 0.07);
+          const metalRiff = [82.41, 82.41, 110, 82.41, 123.47, 116.54, 82.41, 98.0];
+          if (step % 2 === 0) {
+            this.playSynthNote(metalRiff[(step / 2) % metalRiff.length], time, 0.1, 'sawtooth', 0.35, 1400);
+          }
+        }
+      }
+
+      playKick(time, vol = 0.85) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(160, time);
+        osc.frequency.exponentialRampToValueAtTime(32, time + 0.12);
+        gain.gain.setValueAtTime(vol, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.13);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(time);
+        osc.stop(time + 0.13);
+      }
+
+      playSnare(time, vol = 0.4) {
+        const bufferSize = this.ctx.sampleRate * 0.1;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(900, time);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        noise.start(time);
+      }
+
+      playHiHat(time, vol = 0.05, open = false) {
+        const dur = open ? 0.08 : 0.035;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(9500, time);
+        gain.gain.setValueAtTime(vol, time);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(time);
+        osc.stop(time + dur);
+      }
+
+      playSynthNote(freq, time, dur, type = 'sawtooth', vol = 0.25, filterFreq = 600) {
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(filterFreq, time);
+        filter.frequency.exponentialRampToValueAtTime(100, time + dur);
+        gain.gain.setValueAtTime(vol, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(time);
+        osc.stop(time + dur);
+      }
+
+      playClipperTap() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.linearRampToValueAtTime(520, now + 0.06);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.07);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.07);
+      }
+
+      startHoldBuzz(side) {
+        if (!this.ctx) return;
+        this.stopHoldBuzz(side);
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(side === 'left' ? 240 : 270, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+
+        if (side === 'left') {
+          this.holdOscLeft = osc;
+          this.holdGainLeft = gain;
+        } else {
+          this.holdOscRight = osc;
+          this.holdGainRight = gain;
+        }
+      }
+
+      stopHoldBuzz(side) {
+        const osc = side === 'left' ? this.holdOscLeft : this.holdOscRight;
+        const gain = side === 'left' ? this.holdGainLeft : this.holdGainRight;
+        if (osc && gain && this.ctx) {
+          try {
+            gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.03);
+            setTimeout(() => {
+              try { osc.stop(); } catch(e) {}
+            }, 35);
+          } catch(e) {}
+        }
+        if (side === 'left') {
+          this.holdOscLeft = null;
+          this.holdGainLeft = null;
+        } else {
+          this.holdOscRight = null;
+          this.holdGainRight = null;
+        }
+      }
+
+      playWigSnip() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(650, now);
+        osc.frequency.exponentialRampToValueAtTime(1800, now + 0.08);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.08);
+
+        const bufferSize = this.ctx.sampleRate * 0.06;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2200, now);
+        filter.Q.setValueAtTime(3.0, now);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.3, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+        noise.start(now);
+      }
+
+      playHoldCompleteDing() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [1320, 1980, 2640].forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + idx * 0.015);
+          gain.gain.setValueAtTime(0.32, now + idx * 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now + idx * 0.015);
+          osc.stop(now + 0.35);
+        });
+      }
+
+      playPerfectDing() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const freqs = [1046.5, 1318.5, 1567.98];
+        freqs.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + idx * 0.02);
+          gain.gain.setValueAtTime(0.3, now + idx * 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now + idx * 0.02);
+          osc.stop(now + 0.28);
+        });
+      }
+
+      playHealChime() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + idx * 0.04);
+          gain.gain.setValueAtTime(0.28, now + idx * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now + idx * 0.04);
+          osc.stop(now + 0.35);
+        });
+      }
+
+      playScalpBleedSFX() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.linearRampToValueAtTime(180, now + 0.3);
+        gain.gain.setValueAtTime(0.65, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+
+      playUltraBlastSFX() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(2600, now + 0.4);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.65);
+        this.playPerfectDing();
+      }
+    }
+
+    const audio = new ProceduralBarberAudio();
+  </script>
+
+  <!-- Avatar & Crop Controller -->
+  <script>
+    const DEFAULT_AVATAR_FILENAME = "player_head.png";
+    const STORAGE_KEY_CUSTOM_AVATAR = "baldy_custom_avatar_base64";
+
+    const barberHeadImage = new Image();
+    let isAvatarReady = false;
+    let isUsingCustomUploaded = false;
+
+    const avatarStatusImg = document.getElementById('avatar-status-img');
+    const hudAvatarThumb = document.getElementById('hud-avatar-thumb');
+    const avatarSourceTag = document.getElementById('avatar-source-tag');
+
+    const cropModal = document.getElementById('crop-modal');
+    const cropCanvas = document.getElementById('cropCanvas');
+    const cropCtx = cropCanvas.getContext('2d');
+    const cropZoomSlider = document.getElementById('crop-zoom');
+    const zoomValText = document.getElementById('zoom-val-text');
+    const cropFileInput = document.getElementById('crop-file-input');
+
+    let rawSourceImage = new Image();
+    let cropScale = 1.0;
+    let cropPanX = 0;
+    let cropPanY = 0;
+    let isDraggingCrop = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    function initializeAvatar() {
+      const storedCustom = localStorage.getItem(STORAGE_KEY_CUSTOM_AVATAR);
+      if (storedCustom) {
+        setAvatarFromBase64(storedCustom, true);
+      } else {
+        loadDefaultPlayerHeadFile();
+      }
+    }
+
+    function loadDefaultPlayerHeadFile() {
+      isUsingCustomUploaded = false;
+      barberHeadImage.onload = () => {
+        isAvatarReady = true;
+        avatarStatusImg.src = barberHeadImage.src;
+        hudAvatarThumb.src = barberHeadImage.src;
+        avatarSourceTag.innerText = "預設 " + DEFAULT_AVATAR_FILENAME;
+        avatarSourceTag.className = "text-[10px] bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/40 font-bold";
+      };
+      barberHeadImage.onerror = () => {
+        console.warn("未檢測到 " + DEFAULT_AVATAR_FILENAME + "，啟用備援光頭繪製。");
+        isAvatarReady = false;
+        avatarSourceTag.innerText = "手繪備援光頭";
+        avatarSourceTag.className = "text-[10px] bg-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40 font-bold";
+      };
+      barberHeadImage.src = DEFAULT_AVATAR_FILENAME;
+    }
+
+    function setAvatarFromBase64(base64Data, fromStorage = false) {
+      isUsingCustomUploaded = true;
+      barberHeadImage.onload = () => {
+        isAvatarReady = true;
+        avatarStatusImg.src = base64Data;
+        hudAvatarThumb.src = base64Data;
+        avatarSourceTag.innerText = fromStorage ? "自訂光頭 (已快取)" : "自訂光頭 (最新)";
+        avatarSourceTag.className = "text-[10px] bg-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/40 font-bold";
+      };
+      barberHeadImage.src = base64Data;
+    }
+
+    function openCropModalWithImage(imgSrc) {
+      rawSourceImage = new Image();
+      rawSourceImage.onload = () => {
+        cropScale = Math.max(cropCanvas.width / rawSourceImage.width, cropCanvas.height / rawSourceImage.height);
+        cropPanX = (cropCanvas.width - rawSourceImage.width * cropScale) / 2;
+        cropPanY = (cropCanvas.height - rawSourceImage.height * cropScale) / 2;
+        cropZoomSlider.value = cropScale.toFixed(2);
+        zoomValText.innerText = Math.round(cropScale * 100) + '%';
+        renderCropPreview();
+        cropModal.classList.add('modal-active');
+        cropModal.classList.remove('hidden');
+      };
+      rawSourceImage.src = imgSrc;
+    }
+
+    function renderCropPreview() {
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+      if (rawSourceImage.complete && rawSourceImage.naturalWidth > 0) {
+        cropCtx.save();
+        cropCtx.drawImage(
+          rawSourceImage,
+          cropPanX,
+          cropPanY,
+          rawSourceImage.width * cropScale,
+          rawSourceImage.height * cropScale
+        );
+        cropCtx.restore();
+      }
+
+      cropCtx.save();
+      cropCtx.fillStyle = 'rgba(2, 6, 23, 0.65)';
+      cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+      cropCtx.globalCompositeOperation = 'destination-out';
+      cropCtx.beginPath();
+      cropCtx.ellipse(cropCanvas.width / 2, cropCanvas.height / 2, 96, 112, 0, 0, Math.PI * 2);
+      cropCtx.fill();
+      cropCtx.restore();
+    }
+
+    cropCanvas.addEventListener('mousedown', (e) => {
+      isDraggingCrop = true;
+      dragStartX = e.clientX - cropPanX;
+      dragStartY = e.clientY - cropPanY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDraggingCrop) return;
+      cropPanX = e.clientX - dragStartX;
+      cropPanY = e.clientY - dragStartY;
+      renderCropPreview();
+    });
+
+    window.addEventListener('mouseup', () => { isDraggingCrop = false; });
+
+    cropCanvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        isDraggingCrop = true;
+        dragStartX = e.touches[0].clientX - cropPanX;
+        dragStartY = e.touches[0].clientY - cropPanY;
+      }
+    }, { passive: true });
+
+    cropCanvas.addEventListener('touchmove', (e) => {
+      if (isDraggingCrop && e.touches.length === 1) {
+        cropPanX = e.touches[0].clientX - dragStartX;
+        cropPanY = e.touches[0].clientY - dragStartY;
+        renderCropPreview();
+      }
+    }, { passive: true });
+
+    cropCanvas.addEventListener('touchend', () => { isDraggingCrop = false; });
+
+    cropZoomSlider.addEventListener('input', (e) => {
+      const newScale = parseFloat(e.target.value);
+      const centerX = cropCanvas.width / 2;
+      const centerY = cropCanvas.height / 2;
+      cropPanX = centerX - (centerX - cropPanX) * (newScale / cropScale);
+      cropPanY = centerY - (centerY - cropPanY) * (newScale / cropScale);
+      cropScale = newScale;
+      zoomValText.innerText = Math.round(cropScale * 100) + '%';
+      renderCropPreview();
+    });
+
+    cropCanvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      let newScale = Math.min(2.5, Math.max(0.3, cropScale * zoomFactor));
+      const rect = cropCanvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      cropPanX = mouseX - (mouseX - cropPanX) * (newScale / cropScale);
+      cropPanY = mouseY - (mouseY - cropPanY) * (newScale / cropScale);
+      cropScale = newScale;
+      cropZoomSlider.value = cropScale.toFixed(2);
+      zoomValText.innerText = Math.round(cropScale * 100) + '%';
+      renderCropPreview();
+    });
+
+    cropFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          openCropModalWithImage(event.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.getElementById('btn-apply-avatar').addEventListener('click', () => {
+      const outCanvas = document.createElement('canvas');
+      const outSize = 256;
+      outCanvas.width = outSize;
+      outCanvas.height = outSize;
+      const outCtx = outCanvas.getContext('2d');
+
+      const cx = outSize / 2;
+      const cy = outSize / 2;
+      const rx = 96;
+      const ry = 112;
+
+      outCtx.save();
+      outCtx.beginPath();
+      outCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      outCtx.clip();
+
+      outCtx.drawImage(
+        rawSourceImage,
+        cropPanX,
+        cropPanY,
+        rawSourceImage.width * cropScale,
+        rawSourceImage.height * cropScale
+      );
+
+      const grad = outCtx.createRadialGradient(cx, cy, rx * 0.75, cx, cy, rx);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      grad.addColorStop(1, 'rgba(251, 191, 36, 0.4)');
+      outCtx.fillStyle = grad;
+      outCtx.fill();
+      outCtx.restore();
+
+      const croppedBase64 = outCanvas.toDataURL('image/png');
+      try {
+        localStorage.setItem(STORAGE_KEY_CUSTOM_AVATAR, croppedBase64);
+      } catch (err) {
+        console.warn("LocalStorage 儲存超出配額，僅在此工作階段生效。");
+      }
+
+      setAvatarFromBase64(croppedBase64, false);
+      cropModal.classList.remove('modal-active');
+      cropModal.classList.add('hidden');
+    });
+
+    document.getElementById('btn-reset-default-avatar').addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY_CUSTOM_AVATAR);
+      loadDefaultPlayerHeadFile();
+      cropModal.classList.remove('modal-active');
+      cropModal.classList.add('hidden');
+    });
+
+    document.getElementById('btn-close-crop').addEventListener('click', () => {
+      cropModal.classList.remove('modal-active');
+      cropModal.classList.add('hidden');
+    });
+
+    document.getElementById('btn-open-crop-modal').addEventListener('click', () => {
+      cropFileInput.click();
+    });
+
+    document.getElementById('btn-quick-avatar').addEventListener('click', () => {
+      cropFileInput.click();
+    });
+  </script>
+
+  <!-- Core Game Engine -->
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const hpBar = document.getElementById('hp-bar');
+    const stageNameDisplay = document.getElementById('stage-name-display');
+    const stageProgressBar = document.getElementById('stage-progress-bar');
+    const comboDisplay = document.getElementById('combo-display');
+    const scoreDisplay = document.getElementById('score-display');
+    const touchUltraBtn = document.getElementById('touch-ultra');
+    const beatPulse = document.getElementById('beat-pulse');
+    const ratingText = document.getElementById('rating-text');
+    
+    const startScreen = document.getElementById('start-screen');
+    const tutorialScreen = document.getElementById('tutorial-screen');
+    const stageClearScreen = document.getElementById('stage-clear-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    
+    const previewStageTitle = document.getElementById('preview-stage-title');
+    const previewStageDesc = document.getElementById('preview-stage-desc');
+    const previewStageTarget = document.getElementById('preview-stage-target');
+    const nextStageHint = document.getElementById('next-stage-hint');
+
+    const clearScoreEl = document.getElementById('clear-score');
+    const clearShavedEl = document.getElementById('clear-shaved');
+    const clearStarsEl = document.getElementById('clear-stars');
+    const clearTitleEl = document.getElementById('clear-title');
+    const clearIconEl = document.getElementById('clear-icon');
+    const finalScoreEl = document.getElementById('final-score');
+    const finalShavedEl = document.getElementById('final-shaved');
+
+    const beatDots = [
+      document.getElementById('beat-dot-1'),
+      document.getElementById('beat-dot-2'),
+      document.getElementById('beat-dot-3'),
+      document.getElementById('beat-dot-4')
+    ];
+
+    const STAGES = {
+      1: {
+        id: 1,
+        title: "第 1 關：老街理髮廳",
+        subtitle: "暖手入門 • 經典放克",
+        bgm: "STAGE1",
+        bpm: 105,
+        targetShaves: 20,
+        spawnIntervalBeats: 2.0,
+        hitWindowScale: 1.5,
+        wallColor1: "#1e1b4b",
+        wallColor2: "#090d16",
+        floorColor: "#1e293b",
+        accent: "#f59e0b",
+        desc: "85% 普通長髮、15% 補血同伴。熟悉左右單點擊節奏！",
+        nextHint: "下一關提示：節奏提升至 128 BPM，假髮殭屍 (雙擊) 與龐克巨漢大量現身！",
+        spawnWeights: { NORMAL: 0.85, WIG: 0.0, HOLD: 0.0, BALD_TRAP: 0.15 },
+        holdDuration: 0.6
+      },
+      2: {
+        id: 2,
+        title: "第 2 關：霓虹沙龍",
+        subtitle: "進階連剪 • 80s 迪斯可",
+        bgm: "STAGE2",
+        bpm: 128,
+        targetShaves: 50,
+        spawnIntervalBeats: 1.5,
+        hitWindowScale: 1.25,
+        wallColor1: "#3b0764",
+        wallColor2: "#0f051d",
+        floorColor: "#2e1065",
+        accent: "#c084fc",
+        desc: "35% 假髮雙擊怪、20% 短按龐克、30% 普通怪、15% 補血同伴！",
+        nextHint: "決戰提示：節奏 140 BPM 重金屬！呼吸小節留白，決戰 75 人同化！",
+        spawnWeights: { NORMAL: 0.30, WIG: 0.35, HOLD: 0.20, BALD_TRAP: 0.15 },
+        holdDuration: 0.5
+      },
+      3: {
+        id: 3,
+        title: "第 3 關：重金屬理髮地獄",
+        subtitle: "狂暴極速 • 地獄搖滾",
+        bgm: "STAGE3",
+        bpm: 140,
+        targetShaves: 75,
+        spawnIntervalBeats: 1.0,
+        hitWindowScale: 1.35,
+        wallColor1: "#450a0a",
+        wallColor2: "#0c0202",
+        floorColor: "#310c0c",
+        accent: "#ef4444",
+        desc: "25% 龐克極速推、25% 假髮、35% 普通、15% 同伴！決戰 75 人同化！",
+        nextHint: "恭喜全通關！你是當之無愧的光頭理髮霸主！",
+        spawnWeights: { NORMAL: 0.35, WIG: 0.25, HOLD: 0.25, BALD_TRAP: 0.15 },
+        holdDuration: 0.25
+      }
+    };
+
+    let currentStageId = 1;
+    let gameState = 'START';
+    let bpm = 105;
+    let beatInterval = 60 / 105;
+
+    let score = 0;
+    let combo = 0;
+    let maxCombo = 0;
+    let shavedCount = 0;
+    let stageShavedCount = 0;
+    let health = 100;
+    let superMeter = 0;
+    let currentBeatCount = 0;
+    let lastFrameTime = 0;
+    let screenShake = 0;
+    let flashAlpha = 0;
+    let invincibleTimer = 0;
+
+    let barberAction = 'idle';
+    let barberActionTimer = 0;
+    let barberHurtTimer = 0;
+    let beatBobPhase = 0;
+
+    let activeHolds = {
+      left: { holding: false, targetZombie: null, progressBeats: 0 },
+      right: { holding: false, targetZombie: null, progressBeats: 0 }
+    };
+
+    let width = 0, height = 0, centerX = 0, centerY = 0;
+    const BASE_HIT_ZONE_RADIUS = 76;
+
+    let zombies = [];
+    let particles = [];
+    let reflections = [];
+    let floatingTexts = [];
+    let shockwaves = [];
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvas-container');
+      const dpr = window.devicePixelRatio || 1;
+      width = container.clientWidth * dpr;
+      height = container.clientHeight * dpr;
+      canvas.width = width;
+      canvas.height = height;
+      centerX = width / 2;
+      centerY = height * 0.62;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+  </script>
+
+  <!-- Spawning & Hit Assessment -->
+  <script>
+    function scheduleZombieSpawn(currentBeat) {
+      const stage = STAGES[currentStageId];
+      const travelBeats = 4;
+      const targetBeat = currentBeat + travelBeats;
+      const dir = Math.random() < 0.5 ? -1 : 1;
+
+      const rand = Math.random();
+      const weights = stage.spawnWeights;
+      let kind = 'NORMAL';
+
+      let cumulative = 0;
+      if (rand < (cumulative += weights.NORMAL)) {
+        kind = 'NORMAL';
+      } else if (rand < (cumulative += weights.WIG)) {
+        kind = 'WIG';
+      } else if (rand < (cumulative += weights.HOLD)) {
+        kind = 'HOLD';
+      } else {
+        kind = 'BALD_TRAP';
+      }
+
+      const holdDuration = kind === 'HOLD' ? stage.holdDuration : 0;
+      const spawnX = dir === -1 ? -60 * window.devicePixelRatio : width + 60 * window.devicePixelRatio;
+      const distance = Math.abs(centerX - spawnX);
+      const totalTimeSeconds = travelBeats * beatInterval;
+      const exactSpeed = distance / totalTimeSeconds;
+
+      zombies.push({
+        id: Math.random(),
+        kind: kind,
+        dir: dir,
+        x: spawnX,
+        y: centerY,
+        speed: exactSpeed,
+        targetBeat: targetBeat,
+        holdDurationBeats: holdDuration,
+        holdProgress: 0,
+        wigRemoved: false,
+        isShaved: false,
+        isProcessed: false,
+        size: 32 * window.devicePixelRatio,
+        hairColor: kind === 'HOLD' ? '#ec4899' : (kind === 'WIG' ? '#a855f7' : '#22c55e')
+      });
+    }
+
+    function onSongQuarterBeat(beatNumber, audioTime) {
+      if (gameState !== 'PLAYING') return;
+
+      currentBeatCount++;
+      beatBobPhase = 1.0;
+
+      const activeIdx = beatNumber % 4;
+      beatDots.forEach((dot, idx) => {
+        if (idx === activeIdx) {
+          dot.style.opacity = '1';
+          dot.style.transform = 'scale(1.25)';
+          dot.className = idx === 0 
+            ? 'w-2.5 h-2.5 rounded-full bg-amber-300 ring-2 ring-amber-400' 
+            : 'w-2.5 h-2.5 rounded-full bg-amber-400';
+        } else {
+          dot.style.opacity = '0.35';
+          dot.style.transform = 'scale(1)';
+          dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+        }
+      });
+
+      beatPulse.style.transform = 'translate(-50%, -50%) scale(1.2)';
+      setTimeout(() => {
+        beatPulse.style.transform = 'translate(-50%, -50%) scale(1.0)';
+      }, 80);
+
+      const stage = STAGES[currentStageId];
+      if (currentStageId === 3) {
+        if (currentBeatCount % 4 !== 3) {
+          scheduleZombieSpawn(currentBeatCount);
+        }
+      } else if (stage.spawnIntervalBeats === 1.0) {
+        scheduleZombieSpawn(currentBeatCount);
+      } else if (stage.spawnIntervalBeats === 1.5) {
+        if (currentBeatCount % 3 === 0 || currentBeatCount % 3 === 2) {
+          scheduleZombieSpawn(currentBeatCount);
+        }
+      } else {
+        if (currentBeatCount % 2 === 0) {
+          scheduleZombieSpawn(currentBeatCount);
+        }
+      }
+    }
+
+    function handlePress(direction) {
+      if (gameState !== 'PLAYING') return;
+
+      barberAction = direction === 'left' ? 'shave-left' : 'shave-right';
+      barberActionTimer = 0.18;
+
+      const stage = STAGES[currentStageId];
+      const hitRadius = BASE_HIT_ZONE_RADIUS * window.devicePixelRatio * stage.hitWindowScale;
+      const target = getSmartTargetZombie(direction, hitRadius);
+
+      if (!target) {
+        triggerMiss('MISS! 💨', '#ef4444', 4);
+        audio.playClipperTap();
+        return;
+      }
+
+      const dist = Math.abs(target.x - centerX);
+
+      if (target.kind === 'BALD_TRAP') {
+        triggerBaldScalpNick(target);
+        return;
+      }
+
+      if (target.kind === 'HOLD') {
+        activeHolds[direction].holding = true;
+        activeHolds[direction].targetZombie = target;
+        activeHolds[direction].progressBeats = 0;
+        audio.startHoldBuzz(direction);
+        showRating('HOLD! ⚡', '#f472b6');
+        return;
+      }
+
+      if (target.kind === 'WIG' && !target.wigRemoved) {
+        target.wigRemoved = true;
+        audio.playWigSnip();
+        createHairExplosion(target.x, target.y - 20, '#a855f7', 16);
+        spawnFloatingText('POP! 🦱', target.x, target.y - 30 * window.devicePixelRatio, '#e879f9');
+        showRating('DOUBLE TAP! 🦱 再次點擊', '#c084fc');
+        combo++;
+        score += 100;
+        updateHUD();
+        return;
+      }
+
+      evaluateCleanShave(target, dist, hitRadius);
+    }
+
+    function handleRelease(direction) {
+      if (gameState !== 'PLAYING') return;
+
+      audio.stopHoldBuzz(direction);
+
+      const hold = activeHolds[direction];
+      if (hold.holding && hold.targetZombie) {
+        const target = hold.targetZombie;
+        hold.holding = false;
+
+        if (!target.isShaved) {
+          if (hold.progressBeats >= target.holdDurationBeats * 0.4) {
+            completeHoldShave(target);
+          } else {
+            triggerMiss('放太早了！❌', '#ef4444', 8);
+          }
+        }
+        hold.targetZombie = null;
+      }
+    }
+
+    function completeHoldShave(target) {
+      audio.stopHoldBuzz(target.dir === -1 ? 'left' : 'right');
+      triggerShaveSuccess(target, 'PERFECT HOLD! 🎸✨', '#f43f5e', 450, true);
+      audio.playHoldCompleteDing();
+      screenShake = 9;
+
+      shockwaves.push({
+        x: target.x,
+        y: target.y - 20 * window.devicePixelRatio,
+        radius: 10 * window.devicePixelRatio,
+        maxRadius: 80 * window.devicePixelRatio,
+        color: 'rgba(244, 63, 94, 0.8)',
+        life: 1.0
+      });
+      spawnFloatingText('CHIME! 🔔', target.x, target.y - 45 * window.devicePixelRatio, '#fb7185');
+    }
+
+    function evaluateCleanShave(target, dist, hitRadius) {
+      audio.playClipperTap();
+      const accuracy = dist / hitRadius;
+
+      if (accuracy <= 0.45) {
+        triggerShaveSuccess(target, 'PERFECT!! 💈', '#fbbf24', 350, true);
+        audio.playPerfectDing();
+        screenShake = 6;
+        superMeter = Math.min(100, superMeter + 15);
+      } else if (accuracy <= 1.2) {
+        triggerShaveSuccess(target, 'GOOD! ✨', '#38bdf8', 180, false);
+        superMeter = Math.min(100, superMeter + 8);
+      } else {
+        triggerShaveSuccess(target, 'OK ✂', '#a3e635', 90, false);
+        superMeter = Math.min(100, superMeter + 4);
+      }
+    }
+
+    function getSmartTargetZombie(direction, hitRadius) {
+      const candidates = [];
+
+      for (let z of zombies) {
+        if (z.isProcessed || z.isShaved) continue;
+
+        const isCorrectLane = (direction === 'left' && z.dir === -1 && z.x < centerX + 30) ||
+                             (direction === 'right' && z.dir === 1 && z.x > centerX - 30);
+
+        if (isCorrectLane) {
+          const dist = Math.abs(z.x - centerX);
+          const allowedDist = z.kind === 'BALD_TRAP' ? (hitRadius * 0.7 * 1.6) : (hitRadius * 1.6);
+          if (dist <= allowedDist) {
+            candidates.push({ zombie: z, dist: dist });
+          }
+        }
+      }
+
+      if (candidates.length === 0) return null;
+
+      candidates.sort((a, b) => a.dist - b.dist);
+
+      if (candidates[0].zombie.kind === 'BALD_TRAP') {
+        const hostileBehind = candidates.find(c => c.zombie.kind !== 'BALD_TRAP');
+        if (hostileBehind) {
+          return hostileBehind.zombie;
+        }
+      }
+
+      return candidates[0].zombie;
+    }
+
+    function triggerShaveSuccess(zombie, text, color, pts, isPerfect) {
+      zombie.isShaved = true;
+      zombie.isProcessed = true;
+      shavedCount++;
+      stageShavedCount++;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+
+      score += Math.round(pts * (1 + combo * 0.12));
+      health = Math.min(100, health + 2);
+
+      showRating(text, color);
+      createHairExplosion(zombie.x, zombie.y, zombie.hairColor, isPerfect ? 28 : 15);
+      createSparkleParticles(zombie.x, zombie.y);
+      addReflectionRays(zombie.x, zombie.y);
+
+      zombies.forEach(other => {
+        if (!other.isShaved && other.dir === zombie.dir) {
+          const push = (other.dir === -1 ? -45 : 45) * window.devicePixelRatio;
+          other.x += push;
+        }
+      });
+
+      updateHUD();
+      checkStageClear();
+    }
+
+    function triggerBaldScalpNick(zombie) {
+      zombie.isProcessed = true;
+      combo = 0;
+      health = Math.max(0, health - 8);
+      screenShake = 14;
+      barberHurtTimer = 0.3;
+      audio.playScalpBleedSFX();
+      showRating('⚠️ 刮破同伴頭皮！-8 HP', '#dc2626');
+      createBloodSparks(zombie.x, zombie.y);
+      
+      streamer.roastScalp();
+
+      updateHUD();
+      checkGameOver();
+    }
+
+    function triggerMiss(text, color, damage) {
+      combo = 0;
+      health = Math.max(0, health - damage);
+      barberHurtTimer = 0.2;
+      showRating(text, color);
+      updateHUD();
+      checkGameOver();
+    }
+
+    function triggerSuperMove() {
+      if (superMeter < 100 || gameState !== 'PLAYING') return;
+
+      superMeter = 0;
+      barberAction = 'polish';
+      barberActionTimer = 0.65;
+      screenShake = 22;
+      flashAlpha = 1.0;
+      invincibleTimer = 1.5;
+      audio.playUltraBlastSFX();
+      showRating('💥 全場光頭激光大爆發！(霸體保護中) 💥', '#fef08a');
+      streamer.triggerDanmaku("✨✨✨ 全屏拋光大絕！！ ✨✨✨", "#fde047");
+
+      zombies.forEach(z => {
+        if (!z.isShaved && !z.isProcessed) {
+          if (z.kind !== 'BALD_TRAP') {
+            triggerShaveSuccess(z, 'PERFECT 💈', '#fbbf24', 500, true);
+          }
+        }
+      });
+
+      updateHUD();
+    }
+
+    function showRating(text, color) {
+      ratingText.innerText = text;
+      ratingText.style.color = color;
+      ratingText.style.opacity = '1';
+      ratingText.style.transform = 'translate(-50%, -55%) scale(1.3)';
+      setTimeout(() => {
+        ratingText.style.opacity = '0';
+        ratingText.style.transform = 'translate(-50%, -40%) scale(0.9)';
+      }, 340);
+    }
+
+    function spawnFloatingText(text, x, y, color) {
+      floatingTexts.push({
+        text, x, y, color,
+        life: 1.0,
+        vy: -1.8 * window.devicePixelRatio
+      });
+    }
+
+    function createHairExplosion(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = (Math.random() * 8 + 3) * window.devicePixelRatio;
+        particles.push({
+          x: x,
+          y: y - 18 * window.devicePixelRatio,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd - (Math.random() * 5 + 3) * window.devicePixelRatio,
+          color: color,
+          size: (Math.random() * 5 + 3) * window.devicePixelRatio,
+          life: 1.0,
+          decay: Math.random() * 0.03 + 0.02,
+          gravity: 0.35 * window.devicePixelRatio
+        });
+      }
+    }
+
+    function createSparkleParticles(x, y) {
+      for (let i = 0; i < 14; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = (Math.random() * 6 + 2) * window.devicePixelRatio;
+        particles.push({
+          x: x,
+          y: y - 15 * window.devicePixelRatio,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          color: '#fef08a',
+          size: (Math.random() * 4 + 3) * window.devicePixelRatio,
+          life: 1.0,
+          decay: 0.04,
+          gravity: 0
+        });
+      }
+    }
+
+    function createBloodSparks(x, y) {
+      for (let i = 0; i < 20; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = (Math.random() * 7 + 3) * window.devicePixelRatio;
+        particles.push({
+          x: x,
+          y: y - 20 * window.devicePixelRatio,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          color: '#dc2626',
+          size: 4 * window.devicePixelRatio,
+          life: 1.0,
+          decay: 0.03,
+          gravity: 0.4 * window.devicePixelRatio
+        });
+      }
+    }
+
+    function createHealHearts(x, y) {
+      for (let i = 0; i < 8; i++) {
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5;
+        const spd = (Math.random() * 4 + 2) * window.devicePixelRatio;
+        particles.push({
+          x: x,
+          y: y - 15 * window.devicePixelRatio,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          color: '#34d399',
+          size: 5 * window.devicePixelRatio,
+          life: 1.0,
+          decay: 0.025,
+          gravity: -0.1 * window.devicePixelRatio
+        });
+      }
+    }
+
+    function addReflectionRays(x, y) {
+      reflections.push({
+        x: x,
+        y: y,
+        life: 1.0,
+        maxRadius: 240 * window.devicePixelRatio,
+        rotation: 0
+      });
+    }
+
+    // Win & Stage Clear with Streamer Roasts
+    function checkStageClear() {
+      const stage = STAGES[currentStageId];
+      if (stageShavedCount >= stage.targetShaves) {
+        gameState = 'CLEARED';
+        audio.stopMusic();
+        audio.playPerfectDing();
+        
+        clearScoreEl.innerText = score.toLocaleString();
+        clearShavedEl.innerText = `${stageShavedCount} 名光頭新信徒`;
+
+        let stars = "⭐⭐⭐";
+        if (health < 40) stars = "⭐";
+        else if (health < 75) stars = "⭐⭐";
+        clearStarsEl.innerText = stars;
+
+        const nextBtn = document.getElementById('btn-next-stage');
+
+        if (currentStageId === 3) {
+          clearIconEl.innerText = "👑💈🏆";
+          clearTitleEl.innerText = "全破通關！光頭大師傳奇！";
+          document.getElementById('clear-message').innerText = "你已剃光全城 75 名殭屍！但酸民依然在狂嘴！";
+          nextStageHint.innerText = "感謝遊玩！所有關卡全數突破！全網觀眾已被你徹底征服！";
+          nextBtn.innerText = "🏆 榮耀全破！重返主選單";
+          nextBtn.onclick = returnToMenu;
+          streamer.roastWin(true);
+        } else {
+          clearIconEl.innerText = "🎉💈🌟";
+          clearTitleEl.innerText = "理髮大成功！關卡突破！";
+          nextStageHint.innerText = stage.nextHint;
+          nextBtn.innerText = `⏩ 前往第 ${currentStageId + 1} 關 (${STAGES[currentStageId + 1].bpm} BPM)`;
+          nextBtn.onclick = () => {
+            selectStage(currentStageId + 1);
+            startStage(currentStageId);
+          };
+          streamer.roastWin(false);
+        }
+
+        stageClearScreen.classList.remove('hidden');
+      }
+    }
+
+    function checkGameOver() {
+      if (health <= 0) {
+        gameState = 'GAMEOVER';
+        audio.stopMusic();
+        finalScoreEl.innerText = score.toLocaleString();
+        finalShavedEl.innerText = `${shavedCount} 名殭屍已同化`;
+
+        streamer.roastLose();
+        gameOverScreen.classList.remove('hidden');
+      }
+    }
+
+    function updateHUD() {
+      hpBar.style.width = `${health}%`;
+      scoreDisplay.innerText = score.toString().padStart(6, '0');
+      comboDisplay.innerText = combo;
+
+      comboDisplay.style.transform = 'scale(1.3)';
+      setTimeout(() => comboDisplay.style.transform = 'scale(1)', 90);
+
+      const stage = STAGES[currentStageId];
+      const prog = Math.min(100, (stageShavedCount / stage.targetShaves) * 100);
+      stageProgressBar.style.width = `${prog}%`;
+
+      const invIndicator = document.getElementById('invincible-indicator');
+      if (invincibleTimer > 0) {
+        invIndicator.classList.remove('hidden');
+      } else {
+        invIndicator.classList.add('hidden');
+      }
+
+      if (superMeter >= 100) {
+        touchUltraBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        touchUltraBtn.classList.add('bg-gradient-to-r', 'from-amber-400', 'to-yellow-300', 'text-slate-950', 'shadow-[0_0_20px_#f59e0b]');
+      } else {
+        touchUltraBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        touchUltraBtn.classList.remove('bg-gradient-to-r', 'from-amber-400', 'to-yellow-300', 'text-slate-950', 'shadow-[0_0_20px_#f59e0b]');
+      }
+    }
+  </script>
+
+  <!-- Graphics Loop (主角光頭半徑放大至 42 * s) -->
+  <script>
+    function render(time) {
+      const dt = (time - lastFrameTime) / 1000 || 0;
+      lastFrameTime = time;
+
+      if (invincibleTimer > 0) {
+        invincibleTimer = Math.max(0, invincibleTimer - dt);
+        updateHUD();
+      }
+
+      if (barberHurtTimer > 0) {
+        barberHurtTimer = Math.max(0, barberHurtTimer - dt);
+      }
+
+      beatBobPhase = Math.max(0, beatBobPhase - dt * 4.5);
+
+      ['left', 'right'].forEach(dir => {
+        const hold = activeHolds[dir];
+        if (hold.holding && hold.targetZombie) {
+          const z = hold.targetZombie;
+          hold.progressBeats += dt / beatInterval;
+          z.holdProgress = hold.progressBeats;
+
+          if (Math.random() < 0.45) {
+            createSparkleParticles(z.x, z.y);
+          }
+
+          if (hold.progressBeats >= z.holdDurationBeats) {
+            completeHoldShave(z);
+            hold.holding = false;
+            hold.targetZombie = null;
+          }
+        }
+      });
+
+      ctx.save();
+      if (screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * screenShake * window.devicePixelRatio;
+        const shakeY = (Math.random() - 0.5) * screenShake * window.devicePixelRatio;
+        ctx.translate(shakeX, shakeY);
+        screenShake = Math.max(0, screenShake - dt * 26);
+      }
+
+      drawBackground(dt);
+      drawHitZone();
+      drawShockwaves(dt);
+      updateAndDrawZombies(dt);
+      drawMasterBarber(dt);
+      drawParticles(dt);
+      drawFloatingTexts(dt);
+
+      if (flashAlpha > 0) {
+        ctx.fillStyle = `rgba(255, 255, 240, ${flashAlpha})`;
+        ctx.fillRect(0, 0, width, height);
+        flashAlpha = Math.max(0, flashAlpha - dt * 2.8);
+      }
+
+      ctx.restore();
+      requestAnimationFrame(render);
+    }
+
+    function drawBackground(dt) {
+      const stage = STAGES[currentStageId];
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, stage.wallColor2);
+      grad.addColorStop(0.55, stage.wallColor1);
+      grad.addColorStop(1, '#05070f');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      const floorY = centerY + 36 * window.devicePixelRatio;
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, floorY, width, height - floorY);
+
+      const tileSize = 52 * window.devicePixelRatio;
+      for (let x = 0; x < width; x += tileSize) {
+        for (let y = floorY; y < height; y += tileSize * 0.45) {
+          if (((x / tileSize) ^ (Math.floor(y / (tileSize * 0.45)))) % 2 === 0) {
+            ctx.fillStyle = stage.floorColor;
+            ctx.fillRect(x, y, tileSize, tileSize * 0.45);
+          }
+        }
+      }
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = `900 ${26 * window.devicePixelRatio}px 'Fredoka One', sans-serif`;
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.18)';
+      ctx.fillText(`⚡ ${stage.title} (${bpm} BPM) ⚡`, centerX, height * 0.16);
+      ctx.restore();
+    }
+
+    function drawHitZone() {
+      const stage = STAGES[currentStageId];
+      const radius = BASE_HIT_ZONE_RADIUS * window.devicePixelRatio * stage.hitWindowScale;
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY + 10 * window.devicePixelRatio, radius, radius * 0.45, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+      ctx.lineWidth = 4 * window.devicePixelRatio;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.35)';
+      ctx.beginPath();
+      ctx.arc(centerX - radius * 0.8, centerY + 10 * window.devicePixelRatio, 16 * window.devicePixelRatio, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.35)';
+      ctx.beginPath();
+      ctx.arc(centerX + radius * 0.8, centerY + 10 * window.devicePixelRatio, 16 * window.devicePixelRatio, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawMasterBarber(dt) {
+      if (barberActionTimer > 0) {
+        barberActionTimer -= dt;
+        if (barberActionTimer <= 0) barberAction = 'idle';
+      }
+
+      ctx.save();
+      
+      let tiltAngle = 0;
+      let lungeX = 0;
+      const s = window.devicePixelRatio;
+
+      if (barberAction === 'shave-left' || activeHolds.left.holding) {
+        tiltAngle = -0.14;
+        lungeX = -12 * s;
+      } else if (barberAction === 'shave-right' || activeHolds.right.holding) {
+        tiltAngle = 0.14;
+        lungeX = 12 * s;
+      }
+
+      const bobY = Math.sin(beatBobPhase * Math.PI) * (5 * s);
+
+      ctx.translate(centerX + lungeX, centerY + bobY);
+      ctx.rotate(tiltAngle);
+
+      // 放大陰影
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath();
+      ctx.ellipse(0, 48 * s, 48 * s, 16 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 放大身體與圍裙 (加寬至 68 * s)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(-34 * s, -10 * s, 68 * s, 56 * s, 10 * s);
+      ctx.fill();
+
+      // 圍裙條紋
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 4.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(-15 * s, -10 * s);
+      ctx.lineTo(-15 * s, 44 * s);
+      ctx.moveTo(15 * s, -10 * s);
+      ctx.lineTo(15 * s, 44 * s);
+      ctx.stroke();
+
+      // 放大頸部
+      ctx.fillStyle = '#fbcfe8';
+      ctx.fillRect(-14 * s, -30 * s, 28 * s, 22 * s);
+
+      // 【核心放大】：頭部半徑從 28*s 提升至 42*s (約 1.5 倍)
+      const headRadius = 42 * s;
+      const headY = -48 * s;
+
+      if (barberAction === 'polish' || invincibleTimer > 0) {
+        ctx.save();
+        const auraGrad = ctx.createRadialGradient(0, headY, headRadius * 0.5, 0, headY, headRadius * 2.2);
+        auraGrad.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
+        auraGrad.addColorStop(0.6, 'rgba(245, 158, 11, 0.5)');
+        auraGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.arc(0, headY, headRadius * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (isAvatarReady && barberHeadImage.complete && barberHeadImage.naturalWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, headY, headRadius, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(barberHeadImage, -headRadius, headY - headRadius, headRadius * 2, headRadius * 2);
+
+        if (barberHurtTimer > 0) {
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.55)';
+          ctx.fill();
+        }
+
+        // 金色反光光圈
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+        ctx.lineWidth = 4 * s;
+        ctx.stroke();
+
+        ctx.restore();
+
+        // 額頭反光高光點
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-headRadius * 0.35, headY - headRadius * 0.45, 8 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else {
+        // 備援光頭同步放大
+        ctx.fillStyle = barberHurtTimer > 0 ? '#f87171' : '#fbcfe8';
+        ctx.beginPath();
+        ctx.arc(0, headY, headRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-12 * s, headY - 16 * s, 12 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.ellipse(0, headY + 16 * s, 16 * s, 8 * s, 0, 0, Math.PI);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(-12 * s, headY + 3 * s, 4.5 * s, 0, Math.PI * 2);
+        ctx.arc(12 * s, headY + 3 * s, 4.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 放大電推剪工具
+      if (barberAction === 'shave-left' || activeHolds.left.holding) {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(-74 * s, -40 * s, 42 * s, 16 * s);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(-82 * s, -45 * s, 10 * s, 26 * s);
+      } else if (barberAction === 'shave-right' || activeHolds.right.holding) {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(32 * s, -40 * s, 42 * s, 16 * s);
+        ctx.fillStyle = '#fb923c';
+        ctx.fillRect(72 * s, -45 * s, 10 * s, 26 * s);
+      } else {
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(-46 * s, -18 * s, 20 * s, 10 * s);
+        ctx.fillRect(26 * s, -18 * s, 20 * s, 10 * s);
+      }
+
+      ctx.restore();
+    }
+
+    function updateAndDrawZombies(dt) {
+      for (let i = zombies.length - 1; i >= 0; i--) {
+        const z = zombies[i];
+
+        if (z.isShaved) {
+          z.x += (z.dir === -1 ? -1 : 1) * z.speed * 0.45 * dt;
+        } else {
+          z.x += (z.dir === -1 ? 1 : -1) * z.speed * dt;
+
+          if ((z.dir === -1 && z.x >= centerX - 18 * window.devicePixelRatio) ||
+              (z.dir === 1 && z.x <= centerX + 18 * window.devicePixelRatio)) {
+            
+            if (z.kind === 'BALD_TRAP') {
+              z.isProcessed = true;
+              z.isShaved = true;
+              health = Math.min(100, health + 20);
+              score += 300;
+              combo++;
+              audio.playHealChime();
+              showRating('SAFE! 💚 拯救光頭同伴 +20 HP', '#10b981');
+              spawnFloatingText('+20 HP 💚', centerX, centerY - 60 * window.devicePixelRatio, '#34d399');
+              createHealHearts(centerX, centerY);
+              updateHUD();
+            } else {
+              if (invincibleTimer > 0) {
+                triggerShaveSuccess(z, 'AURA DEFENSE! 🛡️', '#fef08a', 200, false);
+              } else {
+                health = Math.max(0, health - 16);
+                combo = 0;
+                screenShake = 12;
+                barberHurtTimer = 0.3;
+                audio.playScalpBleedSFX();
+                showRating('咬到了！💔', '#ef4444');
+                updateHUD();
+                checkGameOver();
+                zombies.splice(i, 1);
+                continue;
+              }
+            }
+          }
+        }
+
+        ctx.save();
+        ctx.translate(z.x, z.y);
+        if (z.dir === 1) ctx.scale(-1, 1);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(0, 26 * window.devicePixelRatio, 24 * window.devicePixelRatio, 8 * window.devicePixelRatio, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = z.kind === 'BALD_TRAP' ? '#f59e0b' : (z.isShaved ? '#6ee7b7' : '#84cc16');
+        ctx.fillRect(-14 * window.devicePixelRatio, -8 * window.devicePixelRatio, 28 * window.devicePixelRatio, 32 * window.devicePixelRatio);
+
+        const hRad = 20 * window.devicePixelRatio;
+        const hY = -26 * window.devicePixelRatio;
+
+        if (z.kind === 'BALD_TRAP') {
+          if (isAvatarReady && barberHeadImage.complete && barberHeadImage.naturalWidth > 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(0, hY, hRad, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(barberHeadImage, -hRad, hY - hRad, hRad * 2, hRad * 2);
+            ctx.restore();
+
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.arc(0, hY, hRad, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath();
+            ctx.arc(0, hY, hRad, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-4 * window.devicePixelRatio, hY - 8 * window.devicePixelRatio, 5 * window.devicePixelRatio, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.arc(0, hY + 10 * window.devicePixelRatio, 6 * window.devicePixelRatio, 0, Math.PI);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.arc(0, hY - 26 * window.devicePixelRatio, 10 * window.devicePixelRatio, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${10 * window.devicePixelRatio}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText('💚', 0, hY - 21 * window.devicePixelRatio);
+
+        } else if (!z.isShaved) {
+          ctx.fillStyle = '#84cc16';
+          ctx.beginPath();
+          ctx.arc(0, hY, hRad, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = z.hairColor;
+
+          if (z.kind === 'HOLD') {
+            ctx.beginPath();
+            ctx.moveTo(-12 * window.devicePixelRatio, hY);
+            ctx.lineTo(-24 * window.devicePixelRatio, hY - 40 * window.devicePixelRatio);
+            ctx.lineTo(0, hY - 50 * window.devicePixelRatio);
+            ctx.lineTo(24 * window.devicePixelRatio, hY - 40 * window.devicePixelRatio);
+            ctx.lineTo(12 * window.devicePixelRatio, hY);
+            ctx.closePath();
+            ctx.fill();
+
+            const barW = 36 * window.devicePixelRatio;
+            const barH = 6 * window.devicePixelRatio;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(-barW / 2, hY - 58 * window.devicePixelRatio, barW, barH);
+            ctx.fillStyle = '#ec4899';
+            const progress = Math.min(1.0, z.holdProgress / z.holdDurationBeats);
+            ctx.fillRect(-barW / 2, hY - 58 * window.devicePixelRatio, barW * progress, barH);
+
+          } else if (z.kind === 'WIG') {
+            if (!z.wigRemoved) {
+              ctx.beginPath();
+              ctx.arc(0, hY - 10 * window.devicePixelRatio, 24 * window.devicePixelRatio, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#f43f5e';
+              ctx.fillRect(-8 * window.devicePixelRatio, hY - 32 * window.devicePixelRatio, 16 * window.devicePixelRatio, 6 * window.devicePixelRatio);
+            } else {
+              ctx.fillStyle = '#581c87';
+              ctx.fillRect(-12 * window.devicePixelRatio, hY - 22 * window.devicePixelRatio, 24 * window.devicePixelRatio, 5 * window.devicePixelRatio);
+            }
+          } else {
+            ctx.beginPath();
+            ctx.arc(0, hY - 14 * window.devicePixelRatio, 24 * window.devicePixelRatio, 0, Math.PI * 2);
+            ctx.arc(-14 * window.devicePixelRatio, hY - 6 * window.devicePixelRatio, 18 * window.devicePixelRatio, 0, Math.PI * 2);
+            ctx.arc(14 * window.devicePixelRatio, hY - 6 * window.devicePixelRatio, 18 * window.devicePixelRatio, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.fillStyle = '#fee2e2';
+          ctx.beginPath();
+          ctx.arc(6 * window.devicePixelRatio, hY, 4 * window.devicePixelRatio, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#dc2626';
+          ctx.fillRect(6 * window.devicePixelRatio, hY - 1, 2, 2);
+
+        } else {
+          if (isAvatarReady && barberHeadImage.complete && barberHeadImage.naturalWidth > 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(0, hY, hRad, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(barberHeadImage, -hRad, hY - hRad, hRad * 2, hRad * 2);
+            ctx.restore();
+
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.arc(0, hY, hRad, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = '#6ee7b7';
+            ctx.beginPath();
+            ctx.arc(0, hY, hRad, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-4 * window.devicePixelRatio, hY - 8 * window.devicePixelRatio, 6 * window.devicePixelRatio, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.arc(0, hY + 6 * window.devicePixelRatio, 6 * window.devicePixelRatio, 0, Math.PI);
+            ctx.stroke();
+          }
+        }
+
+        ctx.restore();
+      }
+    }
+
+    function drawShockwaves(dt) {
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.life -= dt * 2.4;
+        sw.radius += (sw.maxRadius - sw.radius) * 12 * dt;
+
+        if (sw.life <= 0) {
+          shockwaves.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = sw.color;
+        ctx.lineWidth = (4 * window.devicePixelRatio) * sw.life;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawParticles(dt) {
+      for (let i = reflections.length - 1; i >= 0; i--) {
+        const ref = reflections[i];
+        ref.life -= dt * 2.2;
+        ref.rotation += dt * 3;
+        if (ref.life <= 0) {
+          reflections.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.translate(ref.x, ref.y);
+        ctx.rotate(ref.rotation);
+        const rayCount = 8;
+        const currentR = ref.maxRadius * (1 - ref.life);
+
+        for (let r = 0; r < rayCount; r++) {
+          ctx.rotate((Math.PI * 2) / rayCount);
+          ctx.fillStyle = `rgba(254, 240, 138, ${ref.life * 0.4})`;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(14 * window.devicePixelRatio, currentR);
+          ctx.lineTo(-14 * window.devicePixelRatio, currentR);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= p.decay;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function drawFloatingTexts(dt) {
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.life -= dt * 1.5;
+        ft.y += ft.vy;
+
+        if (ft.life <= 0) {
+          floatingTexts.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = ft.life;
+        ctx.fillStyle = ft.color;
+        ctx.font = `bold ${18 * window.devicePixelRatio}px 'Fredoka One', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      }
+    }
+  </script>
+
+  <!-- Input and Setup -->
+  <script>
+    window.addEventListener('keydown', (e) => {
+      if (gameState !== 'PLAYING' || e.repeat) return;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
+        handlePress('left');
+      } else if (e.code === 'KeyD' || e.code === 'ArrowRight' || e.code === 'KeyL') {
+        handlePress('right');
+      } else if (e.code === 'Space') {
+        triggerSuperMove();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (gameState !== 'PLAYING') return;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
+        handleRelease('left');
+      } else if (e.code === 'KeyD' || e.code === 'ArrowRight' || e.code === 'KeyL') {
+        handleRelease('right');
+      }
+    });
+
+    const btnLeft = document.getElementById('touch-left');
+    const btnRight = document.getElementById('touch-right');
+
+    btnLeft.addEventListener('pointerdown', (e) => { e.preventDefault(); handlePress('left'); });
+    btnLeft.addEventListener('pointerup', (e) => { e.preventDefault(); handleRelease('left'); });
+    btnLeft.addEventListener('pointerleave', (e) => { handleRelease('left'); });
+
+    btnRight.addEventListener('pointerdown', (e) => { e.preventDefault(); handlePress('right'); });
+    btnRight.addEventListener('pointerup', (e) => { e.preventDefault(); handleRelease('right'); });
+    btnRight.addEventListener('pointerleave', (e) => { handleRelease('right'); });
+
+    touchUltraBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      triggerSuperMove();
+    });
+
+    function selectStage(sId) {
+      currentStageId = sId;
+      const stage = STAGES[sId];
+
+      document.querySelectorAll('.stage-btn').forEach(b => {
+        if (parseInt(b.dataset.stage) === sId) {
+          b.className = 'stage-btn py-2.5 px-1.5 rounded-xl border-2 border-amber-400/80 bg-amber-500/30 text-amber-200 font-extrabold flex flex-col items-center transition active:scale-95 shadow';
+        } else {
+          b.className = 'stage-btn py-2.5 px-1.5 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 font-bold flex flex-col items-center transition active:scale-95';
+        }
+      });
+
+      previewStageTitle.innerText = `${stage.title} (${stage.bpm} BPM)`;
+      previewStageDesc.innerText = stage.desc;
+      previewStageTarget.innerText = `剃滿 ${stage.targetShaves} 人`;
+      stageNameDisplay.innerText = stage.title;
+    }
+
+    document.querySelectorAll('.stage-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sId = parseInt(btn.dataset.stage);
+        selectStage(sId);
+      });
+    });
+
+    function startStage(stageId) {
+      currentStageId = stageId;
+      const stage = STAGES[currentStageId];
+      bpm = stage.bpm;
+      beatInterval = 60 / bpm;
+
+      audio.setTempo(bpm);
+      audio.playMusic(stage.bgm, onSongQuarterBeat);
+
+      gameState = 'PLAYING';
+      stageShavedCount = 0;
+      health = 100;
+      superMeter = 0;
+      combo = 0;
+      zombies = [];
+      particles = [];
+      reflections = [];
+      floatingTexts = [];
+      currentBeatCount = 0;
+
+      stageNameDisplay.innerText = stage.title;
+
+      startScreen.classList.add('hidden');
+      tutorialScreen.classList.add('hidden');
+      stageClearScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+
+      streamer.triggerDanmaku("直播開始！主播加油（準備看翻車）", "#38bdf8");
+      updateHUD();
+    }
+
+    function returnToMenu() {
+      gameState = 'START';
+      audio.setTempo(105);
+      audio.playMusic('TITLE');
+      startScreen.classList.remove('hidden');
+      stageClearScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      tutorialScreen.classList.add('hidden');
+      selectStage(currentStageId);
+    }
+
+    document.getElementById('btn-start').addEventListener('click', () => startStage(currentStageId));
+    document.getElementById('btn-restart').addEventListener('click', () => startStage(currentStageId));
+    document.getElementById('btn-over-menu').addEventListener('click', returnToMenu);
+    document.getElementById('btn-clear-menu').addEventListener('click', returnToMenu);
+
+    document.getElementById('btn-next-stage').addEventListener('click', () => {
+      let nextId = currentStageId + 1;
+      if (nextId > 3) nextId = 1;
+      selectStage(nextId);
+      startStage(nextId);
+    });
+
+    document.getElementById('btn-tutorial-open').addEventListener('click', () => {
+      tutorialScreen.classList.remove('hidden');
+    });
+    document.getElementById('btn-tutorial-close').addEventListener('click', () => {
+      tutorialScreen.classList.add('hidden');
+    });
+
+    window.addEventListener('click', () => {
+      if (!audio.ctx) {
+        audio.init();
+        if (gameState === 'START') {
+          audio.setTempo(105);
+          audio.playMusic('TITLE');
+        }
+      }
+    }, { once: true });
+
+    initializeAvatar();
+    selectStage(1);
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
